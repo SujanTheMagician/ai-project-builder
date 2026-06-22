@@ -7,16 +7,18 @@ import type { GeneratedBlueprint } from "@/types";
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
+
+  const { id } = await params;
 
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
   if (!dbUser) redirect("/dashboard");
 
   const project = await prisma.project.findFirst({
-    where: { id: params.id, userId: dbUser.id },
+    where: { id, userId: dbUser.id },
     include: { documents: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
 
