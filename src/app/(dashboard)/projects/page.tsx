@@ -4,15 +4,15 @@ import { prisma } from "@/lib/prisma";
 import ProjectBlueprintClient from "@/components/project/ProjectBlueprintClient";
 import type { GeneratedBlueprint } from "@/types";
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+type PageProps = {
+  params: { id: string };
+};
+
+export default async function ProjectDetailPage({ params }: PageProps) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const { id } = await params;
+  const id = params.id;
 
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
   if (!dbUser) redirect("/dashboard");
