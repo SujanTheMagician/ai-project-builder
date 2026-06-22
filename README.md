@@ -4,7 +4,7 @@
 
 Transform any startup idea into a complete software project blueprint using Gemini AI — architecture, database schema, API design, roadmap, and cost estimates in seconds.
 
-🔗 **Live demo:** [your-app.vercel.app](https://your-app.vercel.app)
+🔗 **Live demo:** [ProjectAI](https://ai-project-builder-jade.vercel.app)
 
 ---
 
