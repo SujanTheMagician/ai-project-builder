@@ -38,10 +38,10 @@ const testimonials = [
 ];
 
 const faqs = [
-  { q: "Which AI model powers the generation?", a: "We use Google's Gemini 1.5 Flash — optimised for speed and structured output quality." },
+  { q: "Which AI model powers the generation?", a: "We use Google's Gemini 2.5 Flash — optimised for speed and structured output quality." },
   { q: "Can I export the generated blueprint?", a: "Yes — export to PDF, Markdown, or DOCX from any project view." },
   { q: "Is my project data private?", a: "Absolutely. Projects are tied to your account and never shared or used to train AI models." },
-  { q: "How many projects can I create?", a: "The free plan includes 5 projects. Pro includes unlimited projects and 500 AI credits/month." },
+  { q: "How many projects can I create?", a: "Every account starts with 500 AI credits. Each blueprint uses 10 credits, and failed generations are refunded automatically." },
 ];
 
 export default function LandingPage() {
@@ -69,7 +69,7 @@ export default function LandingPage() {
               <Link href="/dashboard" className="text-sm bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors">
                 Dashboard
               </Link>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </SignedIn>
           </div>
         </div>
@@ -85,11 +85,11 @@ export default function LandingPage() {
             <Sparkles className="w-3.5 h-3.5" />
             Powered by Gemini AI
           </div>
-          <h1 className="text-5xl md:text-6xl font-semibold tracking-tight mb-6 text-gray-900 dark:text-white leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-6 text-gray-900 dark:text-white leading-tight">
             Turn any idea into a
             <span className="text-gradient"> complete project blueprint</span>
           </h1>
-          <p className="text-xl text-gray-500 dark:text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-500 dark:text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Describe your startup or app idea. Get architecture, database schema, API design,
             roadmap, and cost estimates — all in under 10 seconds.
           </p>
@@ -97,7 +97,7 @@ export default function LandingPage() {
             <Link href="/sign-up" className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-xl font-medium transition-all hover:scale-105">
               Generate your first blueprint <ArrowRight className="w-4 h-4" />
             </Link>
-            <a href="https://github.com" className="inline-flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 px-6 py-3 rounded-xl font-medium transition-colors">
+            <a href="https://github.com/SujanTheMagician/ai-project-builder" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 px-6 py-3 rounded-xl font-medium transition-colors">
               <Github className="w-4 h-4" /> View on GitHub
             </a>
           </div>
@@ -151,7 +151,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t) => (
               <div key={t.name} className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
-                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">"{t.quote}"</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white text-sm">{t.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{t.role}</p>
@@ -169,7 +169,7 @@ export default function LandingPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-12">Start free. Upgrade when you need more.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {[
-              { name: "Free", price: "$0", desc: "For individuals exploring the tool", features: ["5 projects", "100 AI credits/month", "PDF & Markdown export", "Basic chat assistant"] },
+              { name: "Free", price: "$0", desc: "For individuals exploring the tool", features: ["500 starter AI credits", "Unlimited projects", "PDF, Markdown & DOCX export", "AI chat assistant"] },
               { name: "Pro", price: "$12/mo", desc: "For teams building seriously", features: ["Unlimited projects", "500 AI credits/month", "All export formats", "Priority AI generation", "Team collaboration"], highlight: true },
             ].map((plan) => (
               <div key={plan.name} className={`rounded-2xl p-6 border text-left ${plan.highlight ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"}`}>
@@ -215,9 +215,9 @@ export default function LandingPage() {
       {/* Top banner */}
       <div className="h-2 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500" />
 
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         {/* Header */}
-        <div className="flex items-center gap-5 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
             SA
           </div>
@@ -312,7 +312,7 @@ export default function LandingPage() {
 </section>
       {/* Footer */}
       <footer className="py-10 px-4 border-t border-gray-100 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-violet-600 rounded-lg flex items-center justify-center">
               <Cpu className="w-3.5 h-3.5 text-white" />

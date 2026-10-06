@@ -47,22 +47,25 @@ export default function ChatPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Chat failed");
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.reply) throw new Error(data?.error ?? "The AI assistant is unavailable. Please try again.");
 
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: "assistant", content: data.reply },
       ]);
-    } catch {
-    toast.error("Rate limit reached — please wait 60 seconds and try again.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      // Let the user retry without retyping.
+      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+      setInput(content);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl flex flex-col h-[calc(100vh-10rem)]">
+    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-9rem)]">
       <div className="mb-4">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white">AI chat assistant</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Ask anything about software architecture, databases, APIs, and tech stacks.</p>
@@ -77,10 +80,8 @@ export default function ChatPage() {
                 ? <Cpu className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
                 : <User className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />}
             </div>
-            <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${msg.role === "assistant" ? "bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300" : "bg-violet-600 text-white"}`}>
-              {msg.content
-  .replace(/\*\*(.*?)\*\*/g, '$1')
-  .replace(/\*(.*?)\*/g, '$1')}
+            <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words ${msg.role === "assistant" ? "bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300" : "bg-violet-600 text-white"}`}>
+              {msg.content}
             </div>
           </motion.div>
         ))}
@@ -115,11 +116,14 @@ export default function ChatPage() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
           placeholder="Ask about architecture, databases, APIs..."
+          aria-label="Message"
+          maxLength={4000}
           className="flex-1 px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-gray-400"
         />
         <button
           onClick={() => sendMessage()}
           disabled={!input.trim() || isLoading}
+          aria-label="Send message"
           className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl transition-colors"
         >
           <Send className="w-4 h-4" />

@@ -4,23 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import toast from "react-hot-toast";
 import { Sparkles, Loader2 } from "lucide-react";
-import { PROJECT_CATEGORIES } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-
-const schema = z.object({
-  name: z.string().min(2, "Project name must be at least 2 characters"),
-  category: z.string().min(1, "Please select a category"),
-  description: z.string().min(20, "Description must be at least 20 characters"),
-  audience: z.string().optional(),
-  features: z.string().optional(),
-  budget: z.string().optional(),
-  timeline: z.string().optional(),
-});
-
-type FormData = z.infer<typeof schema>;
+import { PROJECT_CATEGORIES, cn } from "@/lib/utils";
+import { projectInputSchema, type ProjectInput as FormData } from "@/lib/validation";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -28,13 +15,14 @@ export default function NewProjectPage() {
   const [loadingStep, setLoadingStep] = useState("");
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(projectInputSchema),
   });
 
   const selectedCategory = watch("category");
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
+    let projectId: string | null = null;
     try {
       setLoadingStep("Creating project...");
       const createRes = await fetch("/api/projects", {
@@ -42,22 +30,27 @@ export default function NewProjectPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!createRes.ok) throw new Error("Failed to create project");
-      const { project } = await createRes.json();
+      if (!createRes.ok) throw new Error((await createRes.json().catch(() => null))?.error ?? "Failed to create project");
+      projectId = (await createRes.json()).project.id as string;
 
-      setLoadingStep("Generating blueprint with Gemini AI...");
+      setLoadingStep("Generating blueprint — this can take up to a minute...");
       const genRes = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, formData: data }),
+        body: JSON.stringify({ projectId }),
       });
-      if (!genRes.ok) throw new Error("AI generation failed");
+      if (!genRes.ok) throw new Error((await genRes.json().catch(() => null))?.error ?? "AI generation failed");
 
       toast.success("Blueprint generated successfully!");
-      router.push(`/projects/${project.id}`);
+      router.push(`/projects/${projectId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
-      setIsLoading(false);
+      if (projectId) {
+        // The project was saved; open it so the user can retry generation without re-entering details.
+        router.push(`/projects/${projectId}`);
+      } else {
+        setIsLoading(false);
+      }
     }
   };
 

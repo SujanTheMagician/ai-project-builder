@@ -55,3 +55,10 @@ export const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   Education: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300" },
   "Social Media": { bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-700 dark:text-pink-300" },
 };
+
+export const DEFAULT_CATEGORY_COLOR = { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300" };
+
+/** Turns a project name into a safe download filename (without extension). */
+export function toFileName(name: string) {
+  return name.replace(/[^a-z0-9-_ ]/gi, "").trim().replace(/\s+/g, "-") || "blueprint";
+}

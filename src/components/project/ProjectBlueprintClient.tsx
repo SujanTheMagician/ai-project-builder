@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import {
   FileText, Server, Database, Zap, Map, DollarSign,
-  Download, CheckCircle, AlertCircle
+  Download, CheckCircle, AlertCircle, Loader2, RefreshCw, Sparkles, Trash2,
 } from "lucide-react";
-import { cn, CATEGORY_COLORS } from "@/lib/utils";
-import type { Project, GeneratedBlueprint, ApiEndpoint } from "@/types";
+import { cn, CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "@/lib/utils";
+import { exportDocx, exportMarkdown, exportPdf } from "@/lib/export";
+import type { GeneratedBlueprint, ApiEndpoint } from "@/types";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-400",
@@ -25,192 +27,159 @@ const TABS = [
   { key: "api", label: "API design", icon: Zap },
   { key: "roadmap", label: "Roadmap", icon: Map },
   { key: "cost", label: "Cost", icon: DollarSign },
-];
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
+type ExportFormat = "PDF" | "Markdown" | "DOCX";
+
+type BlueprintProject = { id: string; name: string; category: string; description: string };
 
 export default function ProjectBlueprintClient({
   project,
   blueprint,
 }: {
-  project: Project;
+  project: BlueprintProject;
   blueprint: GeneratedBlueprint | null;
 }) {
-  const [activeTab, setActiveTab] = useState("overview");
-  const colors = CATEGORY_COLORS[project.category] ?? { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300" };
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const colors = CATEGORY_COLORS[project.category] ?? DEFAULT_CATEGORY_COLOR;
 
-const handleExport = async (format: string) => {
-  if (format === "Markdown") {
-    const content = `# ${project.name}
-
-## Executive Summary
-${blueprint.summary}
-
-## Problem Statement
-${blueprint.problem}
-
-## Target Users
-${blueprint.targetUsers}
-
-## Functional Requirements
-${blueprint.requirements.map((r) => `- ${r}`).join("\n")}
-
-## Non-Functional Requirements
-${blueprint.nonFunctional.map((r) => `- ${r}`).join("\n")}
-
-## Technology Stack
-${blueprint.tech.map((t) => `- **${t.layer}**: ${t.stack}`).join("\n")}
-
-## API Endpoints
-${blueprint.apiEndpoints.map((e) => `- ${e.method} ${e.path} — ${e.desc}`).join("\n")}
-
-## Roadmap
-${blueprint.roadmap.map((p) => `### Phase ${p.n}: ${p.title} (${p.dur})\n${p.tasks.map((t) => `- ${t}`).join("\n")}`).join("\n\n")}
-
-## Cost Estimate
-${blueprint.costRows.map((r) => `- ${r.label}: ${r.amount}`).join("\n")}
-
-## Deployment Strategy
-${blueprint.deploymentStrategy}
-`;
-    const blob = new Blob([content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${project.name}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Exported as Markdown ✓");
-
-  } else if (format === "PDF") {
-    const content = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>${project.name}</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #111; }
-  h1 { color: #7c3aed; border-bottom: 2px solid #7c3aed; padding-bottom: 8px; }
-  h2 { color: #374151; margin-top: 32px; border-left: 4px solid #7c3aed; padding-left: 12px; }
-  h3 { color: #4b5563; }
-  .badge { background: #ede9fe; color: #6d28d9; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-  .meta { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
-  ul { padding-left: 20px; line-height: 1.8; }
-  .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .tech-item { background: #f9fafb; padding: 10px 14px; border-radius: 8px; border: 1px solid #e5e7eb; }
-  .tech-layer { font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 600; }
-  .api-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; align-items: center; }
-  .method { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; min-width: 52px; text-align: center; }
-  .GET { background: #dcfce7; color: #166534; }
-  .POST { background: #dbeafe; color: #1e40af; }
-  .PUT { background: #fef9c3; color: #854d0e; }
-  .DELETE { background: #fee2e2; color: #991b1b; }
-  .path { font-family: monospace; font-size: 13px; }
-  .cost-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-  .cost-total { font-weight: 700; color: #7c3aed; }
-  .phase { margin-bottom: 16px; }
-  .phase-num { display: inline-block; background: #ede9fe; color: #6d28d9; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 12px; font-weight: 700; margin-right: 8px; }
-  @media print { body { padding: 20px; } }
-</style>
-</head>
-<body>
-<span class="badge">${project.category}</span>
-<h1>${project.name}</h1>
-<p class="meta">${project.description}</p>
-
-<h2>Executive Summary</h2>
-<p>${blueprint.summary}</p>
-
-<h2>Problem Statement</h2>
-<p>${blueprint.problem}</p>
-
-<h2>Target Users</h2>
-<p>${blueprint.targetUsers}</p>
-
-<h2>Functional Requirements</h2>
-<ul>${blueprint.requirements.map((r) => `<li>${r}</li>`).join("")}</ul>
-
-<h2>Non-Functional Requirements</h2>
-<ul>${blueprint.nonFunctional.map((r) => `<li>${r}</li>`).join("")}</ul>
-
-<h2>Technology Stack</h2>
-<div class="tech-grid">
-${blueprint.tech.map((t) => `<div class="tech-item"><div class="tech-layer">${t.layer}</div><div>${t.stack}</div></div>`).join("")}
-</div>
-
-<h2>API Endpoints</h2>
-${blueprint.apiEndpoints.map((e) => `<div class="api-row"><span class="method ${e.method}">${e.method}</span><span class="path">${e.path}</span><span style="color:#6b7280;font-size:13px">${e.desc}</span></div>`).join("")}
-
-<h2>Development Roadmap</h2>
-${blueprint.roadmap.map((p) => `<div class="phase"><span class="phase-num">${p.n}</span><strong>${p.title}</strong> — <em>${p.dur}</em><ul>${p.tasks.map((t) => `<li>${t}</li>`).join("")}</ul></div>`).join("")}
-
-<h2>Sprint Plan</h2>
-${blueprint.sprints.map((s) => `<h3>${s.title}</h3><ul>${s.tasks.map((t) => `<li>${t}</li>`).join("")}</ul>`).join("")}
-
-<h2>Cost Estimate</h2>
-${blueprint.costRows.map((r, i) => `<div class="cost-row ${i === blueprint.costRows.length - 1 ? "cost-total" : ""}"><span>${r.label}</span><span>${r.amount}</span></div>`).join("")}
-
-<h2>Deployment Strategy</h2>
-<p>${blueprint.deploymentStrategy}</p>
-
-<p style="margin-top:48px;color:#9ca3af;font-size:12px;text-align:center">Generated by ProjectAI · Sujan Anandh · ${new Date().toLocaleDateString()}</p>
-</body>
-</html>`;
-
-    const blob = new Blob([content], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const printWindow = window.open(url, "_blank");
-    if (printWindow) {
-      printWindow.onload = () => {
-        printWindow.print();
-        URL.revokeObjectURL(url);
-      };
+  const handleGenerate = async () => {
+    if (blueprint && !window.confirm("Regenerate this blueprint? This uses AI credits and replaces the current version.")) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "AI generation failed");
+      toast.success("Blueprint generated!");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setIsGenerating(false);
     }
-    toast.success("PDF ready — click Save as PDF in print dialog ✓");
+  };
 
-  } else if (format === "DOCX") {
-    const content = `${project.name}\n${"=".repeat(project.name.length)}\n\nCategory: ${project.category}\n${project.description}\n\nEXECUTIVE SUMMARY\n${"-".repeat(20)}\n${blueprint.summary}\n\nPROBLEM STATEMENT\n${"-".repeat(20)}\n${blueprint.problem}\n\nFUNCTIONAL REQUIREMENTS\n${"-".repeat(25)}\n${blueprint.requirements.map((r) => `• ${r}`).join("\n")}\n\nTECHNOLOGY STACK\n${"-".repeat(18)}\n${blueprint.tech.map((t) => `${t.layer}: ${t.stack}`).join("\n")}\n\nCOST ESTIMATE\n${"-".repeat(15)}\n${blueprint.costRows.map((r) => `${r.label}: ${r.amount}`).join("\n")}\n\nDEPLOYMENT STRATEGY\n${"-".repeat(22)}\n${blueprint.deploymentStrategy}\n\nGenerated by ProjectAI · Sujan Anandh`;
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${project.name}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Exported as DOCX ✓");
-  }
-};
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete “${project.name}”? This cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete project");
+      toast.success("Project deleted");
+      router.push("/projects");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete project");
+      setIsDeleting(false);
+    }
+  };
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!blueprint) return;
+    setExporting(format);
+    try {
+      if (format === "Markdown") {
+        exportMarkdown(project, blueprint);
+        toast.success("Exported as Markdown");
+      } else if (format === "DOCX") {
+        await exportDocx(project, blueprint);
+        toast.success("Exported as DOCX");
+      } else if (exportPdf(project, blueprint)) {
+        toast.success("Choose “Save as PDF” in the print dialog");
+      } else {
+        toast.error("Please allow pop-ups to export as PDF");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(`Failed to export ${format}`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const header = (
+    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
+      <div className="min-w-0">
+        <span className={`inline-block text-xs px-2.5 py-0.5 rounded-full font-medium mb-2 ${colors.bg} ${colors.text}`}>{project.category}</span>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white break-words">{project.name}</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{project.description}</p>
+      </div>
+      <div className="flex flex-wrap gap-2 flex-shrink-0">
+        {blueprint && (
+          <>
+            {(["PDF", "Markdown", "DOCX"] as const).map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => handleExport(fmt)}
+                disabled={exporting !== null}
+                className="inline-flex items-center gap-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 transition-colors disabled:opacity-60"
+              >
+                {exporting === fmt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                {fmt}
+              </button>
+            ))}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-1.5 text-xs border border-violet-200 dark:border-violet-800 rounded-lg px-3 py-1.5 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-60"
+            >
+              <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+              {isGenerating ? "Regenerating..." : "Regenerate"}
+            </button>
+          </>
+        )}
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          aria-label="Delete project"
+          className="inline-flex items-center gap-1.5 text-xs border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-60"
+        >
+          {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+          Delete
+        </button>
+      </div>
+    </div>
+  );
 
   if (!blueprint) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <AlertCircle className="w-10 h-10 text-gray-300 dark:text-gray-700" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">Blueprint not generated yet.</p>
+      <div className="max-w-4xl">
+        {header}
+        <div className="flex flex-col items-center justify-center text-center py-20 px-4 gap-3 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl">
+          <AlertCircle className="w-10 h-10 text-gray-300 dark:text-gray-700" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">This project doesn&apos;t have a blueprint yet.</p>
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="mt-2 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {isGenerating ? "Generating — this can take up to a minute..." : "Generate blueprint"}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <span className={`inline-block text-xs px-2.5 py-0.5 rounded-full font-medium mb-2 ${colors.bg} ${colors.text}`}>{project.category}</span>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{project.name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{project.description}</p>
-        </div>
-        <div className="flex gap-2">
-          {["PDF", "Markdown", "DOCX"].map((fmt) => (
-            <button key={fmt} onClick={() => handleExport(fmt)} className="inline-flex items-center gap-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 transition-colors">
-              <Download className="w-3 h-3" />{fmt}
-            </button>
-          ))}
-        </div>
-      </div>
+      {header}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
+      <div role="tablist" className="flex gap-1 mb-6 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
               "flex items-center gap-1.5 text-sm px-3 py-2 border-b-2 -mb-px transition-colors whitespace-nowrap",
@@ -281,7 +250,7 @@ function ArchitectureTab({ blueprint }: { blueprint: GeneratedBlueprint }) {
   return (
     <div>
       <Section title="Technology stack">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(blueprint.tech || []).map((t) => (
             <div key={t.layer} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{t.layer}</p>
@@ -312,7 +281,7 @@ function DatabaseTab({ blueprint }: { blueprint: GeneratedBlueprint }) {
               <Database className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               <span className="text-sm font-medium text-gray-900 dark:text-white font-mono">{table.name}</span>
             </div>
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto"><table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800">
                   <th className="text-left px-4 py-2 text-gray-500 dark:text-gray-400 font-medium">Column</th>
@@ -332,7 +301,7 @@ function DatabaseTab({ blueprint }: { blueprint: GeneratedBlueprint }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ))}
       </div>
