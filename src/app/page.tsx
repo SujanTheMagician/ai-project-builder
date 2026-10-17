@@ -31,17 +31,18 @@ const steps = [
   { n: "04", title: "Start building", desc: "Export to PDF, Markdown or DOCX and start your project with confidence." },
 ];
 
-const testimonials = [
-  { name: "Priya Sharma", role: "Founder, HealthOS", quote: "Saved us 2 weeks of planning. The database schema it generated was better than what our team would have produced." },
-  { name: "Arjun Mehta", role: "CTO, FinVest", quote: "We used the API blueprint directly — barely needed to modify it. Incredible tool for early-stage startups." },
-  { name: "Sneha Reddy", role: "Product Manager, EduFlow", quote: "The roadmap and sprint plan were spot-on. I shared it with investors and they were impressed." },
+const iterateFeatures = [
+  { title: "Version history", desc: "Every generation, edit and section rewrite is saved as a version. Compare any two and restore in one click." },
+  { title: "Rewrite one section", desc: "Ask for “use serverless” or “add multi-tenancy” and regenerate just the database, API or roadmap — the rest stays put." },
+  { title: "Project-aware chat", desc: "Chat with an AI architect that knows your tables, endpoints and stack, with conversations saved per project." },
+  { title: "Share read-only links", desc: "Send a blueprint to a teammate, client or investor with a link you can revoke at any time." },
 ];
 
 const faqs = [
   { q: "Which AI model powers the generation?", a: "We use Google's Gemini 2.5 Flash — optimised for speed and structured output quality." },
   { q: "Can I export the generated blueprint?", a: "Yes — export to PDF, Markdown, or DOCX from any project view." },
-  { q: "Is my project data private?", a: "Absolutely. Projects are tied to your account and never shared or used to train AI models." },
-  { q: "How many projects can I create?", a: "Every account starts with 500 AI credits. Each blueprint uses 10 credits, and failed generations are refunded automatically." },
+  { q: "Is my project data private?", a: "Projects are tied to your account. Nothing is public unless you create a share link, and you can revoke links at any time." },
+  { q: "How do credits work?", a: "Every account starts with 500 AI credits. A full blueprint uses 10, regenerating one section uses 3, and chat, edits and exports are free. Failed generations are refunded automatically." },
 ];
 
 export default function LandingPage() {
@@ -144,18 +145,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Iterating */}
       <section className="py-20 px-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-semibold text-center text-gray-900 dark:text-white mb-12">What builders are saying</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
-                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white text-sm">{t.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t.role}</p>
-                </div>
+          <h2 className="text-3xl font-semibold text-center text-gray-900 dark:text-white mb-3">Built for iterating, not one-shot output</h2>
+          <p className="text-center text-gray-500 dark:text-gray-400 mb-12">A blueprint is a starting point. Refine it until it fits.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {iterateFeatures.map((f) => (
+              <div key={f.title} className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+                <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-2">{f.title}</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -170,7 +169,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {[
               { name: "Free", price: "$0", desc: "For individuals exploring the tool", features: ["500 starter AI credits", "Unlimited projects", "PDF, Markdown & DOCX export", "AI chat assistant"] },
-              { name: "Pro", price: "$12/mo", desc: "For teams building seriously", features: ["Unlimited projects", "500 AI credits/month", "All export formats", "Priority AI generation", "Team collaboration"], highlight: true },
+              { name: "Pro", price: "Coming soon", desc: "For people building seriously", features: ["Everything in Free", "500 AI credits every month", "Priority AI generation"], highlight: true },
             ].map((plan) => (
               <div key={plan.name} className={`rounded-2xl p-6 border text-left ${plan.highlight ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"}`}>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{plan.name}</h3>

@@ -2,13 +2,9 @@ import "server-only";
 import type { CreditReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/errors";
+import { CREDIT_COSTS, SIGNUP_CREDITS } from "@/lib/pricing";
 
-export const SIGNUP_CREDITS = 500;
-
-export const CREDIT_COSTS = {
-  blueprint_generation: 10,
-  section_regeneration: 3,
-} as const;
+export { CREDIT_COSTS, SIGNUP_CREDITS };
 
 type SpendReason = keyof typeof CREDIT_COSTS;
 

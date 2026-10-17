@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
-import { Save, User, Cpu, Loader2, AlertTriangle } from "lucide-react";
+import { Save, User, Loader2, AlertTriangle, Palette } from "lucide-react";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import CreditsCard from "@/components/settings/CreditsCard";
+import TagManager from "@/components/settings/TagManager";
 
 const inputClass =
   "w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent";
@@ -14,7 +17,6 @@ export default function SettingsPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [credits, setCredits] = useState<number | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -23,13 +25,6 @@ export default function SettingsPage() {
     setFirstName(user.firstName ?? "");
     setLastName(user.lastName ?? "");
   }, [user]);
-
-  useEffect(() => {
-    fetch("/api/user")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setCredits(data.user.credits))
-      .catch(() => {});
-  }, []);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +57,7 @@ export default function SettingsPage() {
   const dirty = !!user && (firstName.trim() !== (user.firstName ?? "") || lastName.trim() !== (user.lastName ?? ""));
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-2xl">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Settings</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage your account and preferences.</p>
@@ -106,14 +101,21 @@ export default function SettingsPage() {
         </button>
       </form>
 
-      {/* Usage */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Cpu className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          <h2 className="text-sm font-medium text-gray-900 dark:text-white">AI usage</h2>
+      {/* Appearance */}
+      <section className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Palette className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <div>
+            <h2 className="text-sm font-medium text-gray-900 dark:text-white">Appearance</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Saved on this device.</p>
+          </div>
         </div>
-        <p className="text-2xl font-semibold text-gray-900 dark:text-white">{credits ?? "—"}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Credits remaining. Each blueprint generation uses 10 credits; failed generations are refunded.</p>
+        <ThemeToggle showLabels />
+      </section>
+
+      <div className="space-y-4 mb-4">
+        <CreditsCard />
+        <TagManager />
       </div>
 
       {/* Danger zone */}
