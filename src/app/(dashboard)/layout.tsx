@@ -10,6 +10,7 @@ import {
   Settings, Cpu, Search, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -76,7 +77,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </nav>
 
-      <div className="p-3 border-t border-gray-100 dark:border-gray-800">
+      <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+        <ThemeToggle />
         <div className="flex items-center gap-2.5 px-2 py-1">
           <UserButton />
           <div className="min-w-0">

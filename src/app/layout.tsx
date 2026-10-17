@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
+import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,6 +24,10 @@ export default function RootLayout({
   return (
     <ClerkProvider afterSignOutUrl="/">
       <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* Sets the dark class before first paint; see useTheme.ts */}
+          <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        </head>
         <body>
           {children}
           <Toaster
