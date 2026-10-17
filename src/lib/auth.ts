@@ -1,11 +1,14 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { SIGNUP_CREDITS } from "@/lib/credits";
 
 /**
  * Returns the database user for the signed-in Clerk user, creating or
  * syncing the record on demand. Returns null when nobody is signed in.
+ * Wrapped in React's cache() so layouts and pages in one request share one lookup.
  */
-export async function getDbUser() {
+export const getDbUser = cache(async () => {
   const { userId } = await auth();
   if (!userId) return null;
 
@@ -27,8 +30,13 @@ export async function getDbUser() {
   return prisma.user.upsert({
     where: { clerkId: userId },
     update: {},
-    create: { clerkId: userId, email, name, imageUrl: clerkUser?.imageUrl ?? null },
+    create: {
+      clerkId: userId,
+      email,
+      name,
+      imageUrl: clerkUser?.imageUrl ?? null,
+      credits: SIGNUP_CREDITS,
+      creditTransactions: { create: { amount: SIGNUP_CREDITS, reason: "signup_bonus" } },
+    },
   });
-}
-
-export const CREDITS_PER_GENERATION = 10;
+});

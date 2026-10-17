@@ -1,13 +1,15 @@
 import type { ApiEndpoint, GeneratedBlueprint, ProjectFormData } from "@/types";
 import { env } from "@/lib/env";
+import { ApiError } from "@/lib/errors";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const BLUEPRINT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || BLUEPRINT_MODEL;
 
-export class GeminiError extends Error {
-  constructor(message: string, public status = 500) {
-    super(message);
+/** AI failures carry a user-safe message, so they extend ApiError and apiHandler returns them as-is. */
+export class GeminiError extends ApiError {
+  constructor(message: string, status = 500) {
+    super(status, message);
     this.name = "GeminiError";
   }
 }

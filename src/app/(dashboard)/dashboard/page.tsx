@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { getDbUser, CREDITS_PER_GENERATION } from "@/lib/auth";
+import { getDbUser } from "@/lib/auth";
+import { CREDIT_COSTS } from "@/lib/credits";
 import { formatRelativeTime, CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "@/lib/utils";
 import { PlusCircle, FolderOpen, FileText, Cpu, ArrowRight, Zap } from "lucide-react";
 
@@ -30,7 +31,7 @@ export default async function DashboardPage() {
   const stats = [
     { label: "Total projects", value: totalProjects, icon: FolderOpen, delta: "All time" },
     { label: "Documents generated", value: totalDocs, icon: FileText, delta: "Blueprints" },
-    { label: "AI credits", value: dbUser.credits, icon: Cpu, delta: `${CREDITS_PER_GENERATION} per blueprint` },
+    { label: "AI credits", value: dbUser.credits, icon: Cpu, delta: `${CREDIT_COSTS.blueprint_generation} per blueprint` },
     { label: "Account", value: "Active", icon: Zap, delta: "Free plan" },
   ];
 
