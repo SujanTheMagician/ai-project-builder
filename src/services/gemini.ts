@@ -1,4 +1,5 @@
 import type { ApiEndpoint, GeneratedBlueprint, ProjectFormData } from "@/types";
+import { env } from "@/lib/env";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const BLUEPRINT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -24,8 +25,7 @@ export async function callGemini({
   systemInstruction?: string;
   generationConfig?: Record<string, unknown>;
 }): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new GeminiError("AI is not configured on the server (missing GEMINI_API_KEY)");
+  const apiKey = env().GEMINI_API_KEY;
 
   const response = await fetch(`${GEMINI_BASE_URL}/${model}:generateContent`, {
     method: "POST",

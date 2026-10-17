@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDbUser } from "@/lib/auth";
+import { ApiError, apiHandler, parseBody, requireUser } from "@/lib/api";
 import { projectUpdateSchema } from "@/lib/validation";
 
 type Context = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Context) {
-  const user = await getDbUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const GET = apiHandler<Context>(async (_req, { params }) => {
+  const user = await requireUser();
   const { id } = await params;
 
   const project = await prisma.project.findFirst({
@@ -15,37 +14,30 @@ export async function GET(_req: NextRequest, { params }: Context) {
     include: { documents: { orderBy: { createdAt: "desc" } } },
   });
 
-  if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!project) throw new ApiError(404, "Not found");
   return NextResponse.json({ project });
-}
+});
 
-export async function PUT(req: NextRequest, { params }: Context) {
-  const user = await getDbUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const PUT = apiHandler<Context>(async (req: NextRequest, { params }) => {
+  const user = await requireUser();
   const { id } = await params;
-
-  const body = await req.json().catch(() => null);
-  const parsed = projectUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid update", issues: parsed.error.flatten() }, { status: 400 });
-  }
+  const data = await parseBody(req, projectUpdateSchema, "Invalid update");
 
   const { count } = await prisma.project.updateMany({
     where: { id, userId: user.id },
-    data: parsed.data,
+    data,
   });
-  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (count === 0) throw new ApiError(404, "Not found");
 
   const project = await prisma.project.findUnique({ where: { id } });
   return NextResponse.json({ project });
-}
+});
 
-export async function DELETE(_req: NextRequest, { params }: Context) {
-  const user = await getDbUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const DELETE = apiHandler<Context>(async (_req, { params }) => {
+  const user = await requireUser();
   const { id } = await params;
 
   const { count } = await prisma.project.deleteMany({ where: { id, userId: user.id } });
-  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (count === 0) throw new ApiError(404, "Not found");
   return NextResponse.json({ success: true });
-}
+});

@@ -1,34 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDbUser } from "@/lib/auth";
+import { apiHandler, parseBody, requireUser } from "@/lib/api";
 import { projectInputSchema } from "@/lib/validation";
 
-export async function GET() {
-  const user = await getDbUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const GET = apiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
+  const limit = Math.min(Number(req.nextUrl.searchParams.get("limit")) || 100, 100);
 
   const projects = await prisma.project.findMany({
     where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
     include: { _count: { select: { documents: true } } },
   });
 
   return NextResponse.json({ projects });
-}
+});
 
-export async function POST(req: NextRequest) {
-  const user = await getDbUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json().catch(() => null);
-  const parsed = projectInputSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid project details", issues: parsed.error.flatten() }, { status: 400 });
-  }
+export const POST = apiHandler(async (req: NextRequest) => {
+  const user = await requireUser();
+  const data = await parseBody(req, projectInputSchema, "Invalid project details");
 
   const project = await prisma.project.create({
-    data: { ...parsed.data, userId: user.id, status: "draft" },
+    data: { ...data, userId: user.id, status: "draft" },
   });
 
   return NextResponse.json({ project }, { status: 201 });
-}
+});
