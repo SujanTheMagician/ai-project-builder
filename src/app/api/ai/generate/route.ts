@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ApiError, apiHandler, parseBody, requireUser } from "@/lib/api";
@@ -27,6 +27,12 @@ export const POST = apiHandler(async (req: NextRequest) => {
   const cost = await spendCredits(user.id, "blueprint_generation", projectId);
   const encoder = new TextEncoder();
 
+  // If the user leaves the page, keep the function alive until the blueprint is saved (or refunded).
+  // The promise is created now (not inside the callback, which only runs after the response ends).
+  let markFinished!: () => void;
+  const finished = new Promise<void>((resolve) => (markFinished = resolve));
+  after(() => finished);
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let open = true;
@@ -50,6 +56,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
         emit({ type: "error", message: err instanceof ApiError ? err.message : "AI generation failed. Your credits were refunded." });
       } finally {
         if (open) controller.close();
+        markFinished();
       }
     },
   });

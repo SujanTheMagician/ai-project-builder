@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ApiError, apiHandler, parseBody, requireUser } from "@/lib/api";
 import { chatRequestSchema } from "@/lib/validation";
@@ -29,6 +29,7 @@ async function resolveConversation(userId: string, conversationId: string | unde
  * The conversation id is returned in the x-conversation-id header.
  */
 export const POST = apiHandler(async (req: NextRequest) => {
+  const started = Date.now();
   const user = await requireUser();
   const { conversationId, projectId, message } = await parseBody(req, chatRequestSchema, "Invalid chat request");
 
@@ -39,15 +40,20 @@ export const POST = apiHandler(async (req: NextRequest) => {
     conversation.projectId ? prisma.project.findUnique({ where: { id: conversation.projectId }, select: { id: true, name: true } }) : null,
   ]);
   const blueprint = project ? (await getLatestBlueprint(project.id))?.blueprint ?? null : null;
+  const dbMs = Date.now() - started;
 
-
-  // Gemini requires the conversation to start with a user turn.
+  // Gemini requires the conversation to start with a user turn and to alternate roles.
+  // If a reply was ever lost (e.g. a dropped connection), merge the consecutive turns
+  // instead of sending two user messages in a row, which makes the model answer the older one.
   const turns = history.reverse();
   while (turns.length && turns[0].role !== "user") turns.shift();
-  const contents: GeminiContent[] = [
-    ...turns.map((m) => ({ role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] })),
-    { role: "user", parts: [{ text: message }] },
-  ];
+  const contents: GeminiContent[] = [];
+  for (const m of [...turns, { role: "user" as const, content: message }]) {
+    const role = m.role === "assistant" ? "model" : "user";
+    const last = contents[contents.length - 1];
+    if (last?.role === role) last.parts[0].text += `\n\n${m.content}`;
+    else contents.push({ role, parts: [{ text: m.content }] });
+  }
 
   const iterator = streamGemini({
     model: models.chat,
@@ -73,9 +79,27 @@ export const POST = apiHandler(async (req: NextRequest) => {
     if (!conversationId) await prisma.conversation.delete({ where: { id: conversation.id } }).catch(() => {});
     throw err;
   }
+  const firstTokenMs = Date.now() - started - dbMs;
   let reply = first.done ? "" : first.value;
   await prisma.message.create({ data: { conversationId: conversation.id, role: "user", content: message } });
   const encoder = new TextEncoder();
+
+  const saveReply = async (stopped: boolean) => {
+    if (!reply.trim()) return;
+    const content = stopped ? `${reply.trimEnd()}\n\n_(stopped)_` : reply;
+    await prisma
+      .$transaction([
+        prisma.message.create({ data: { conversationId: conversation.id, role: "assistant", content } }),
+        prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } }),
+      ])
+      .catch((e) => console.error("Failed to save assistant message:", e));
+  };
+
+  // Serverless platforms may freeze the function once the response ends. after() keeps it
+  // alive until the reply is stored, including when the user pressed Stop and disconnected.
+  let markSaved!: () => void;
+  const saved = new Promise<void>((resolve) => (markSaved = resolve));
+  after(() => saved);
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -85,21 +109,18 @@ export const POST = apiHandler(async (req: NextRequest) => {
           reply += delta;
           controller.enqueue(encoder.encode(delta));
         }
+        // Persist before closing: closing first let the platform end the function before the write ran.
+        await saveReply(false);
         controller.close();
       } catch (err) {
         // An abort means the user pressed Stop; anything else is a provider failure mid-stream.
+        await saveReply(req.signal.aborted);
         if (!req.signal.aborted) {
           console.error("Chat stream failed:", err);
           controller.error(err);
         }
       } finally {
-        if (reply.trim()) {
-          const content = req.signal.aborted ? `${reply.trimEnd()}\n\n_(stopped)_` : reply;
-          await prisma.$transaction([
-            prisma.message.create({ data: { conversationId: conversation.id, role: "assistant", content } }),
-            prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } }),
-          ]).catch((e) => console.error("Failed to save assistant message:", e));
-        }
+        markSaved();
       }
     },
   });
@@ -110,6 +131,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
       "x-conversation-id": conversation.id,
+      // Visible in the browser dev tools: time spent on database work vs. waiting for the first AI token.
+      "Server-Timing": `db;dur=${dbMs}, ai-first-token;dur=${firstTokenMs}`,
     },
   });
 });
