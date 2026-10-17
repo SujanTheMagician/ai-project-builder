@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, PlusCircle, FolderOpen, MessageCircle,
-  Settings, Cpu, Search, Menu, X,
+  Settings, Cpu, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import CommandPalette from "@/components/ui/CommandPalette";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -39,21 +40,13 @@ function NavLink({ href, icon: Icon, label, active }: { href: string; icon: type
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [query, setQuery] = useState("");
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setMobileOpen(false), [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
-
-  const onSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    router.push(q ? `/projects?q=${encodeURIComponent(q)}` : "/projects");
-  };
 
   const sidebar = (
     <>
@@ -138,23 +131,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu className="w-5 h-5" />
           </button>
-          <form onSubmit={onSearch} className="flex-1 max-w-xs" role="search">
-            <label className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 focus-within:border-violet-400 transition-colors">
-              <Search className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="sr-only">Search projects</span>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search projects..."
-                className="bg-transparent outline-none w-full text-gray-900 dark:text-white placeholder:text-gray-400"
-              />
-            </label>
-          </form>
+          <CommandPalette />
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <motion.div
-            key={pathname}
+            // Animate on page changes, but not between tabs of one project (that would remount its layout).
+            key={pathname.split("/").slice(0, 3).join("/")}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
