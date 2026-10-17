@@ -192,3 +192,9 @@ export async function exportDocx(project: ExportProject, b: GeneratedBlueprint) 
 
   download(await Packer.toBlob(doc), `${toFileName(project.name)}.docx`);
 }
+
+/** Raw blueprint JSON, e.g. for scripting or importing elsewhere. */
+export function exportJson(project: ExportProject, b: GeneratedBlueprint) {
+  const data = { project, blueprint: b, exportedAt: new Date().toISOString() };
+  download(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), `${toFileName(project.name)}.json`);
+}
