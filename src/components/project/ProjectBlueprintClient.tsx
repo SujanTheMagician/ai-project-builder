@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn, CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR } from "@/lib/utils";
 import { exportDocx, exportMarkdown, exportPdf } from "@/lib/export";
+import { useBlueprintGeneration } from "@/hooks/useBlueprintGeneration";
 import type { GeneratedBlueprint, ApiEndpoint } from "@/types";
 
 const METHOD_COLORS: Record<string, string> = {
@@ -43,27 +44,19 @@ export default function ProjectBlueprintClient({
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { generate, isGenerating } = useBlueprintGeneration();
   const [isDeleting, setIsDeleting] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const colors = CATEGORY_COLORS[project.category] ?? DEFAULT_CATEGORY_COLOR;
 
   const handleGenerate = async () => {
-    if (blueprint && !window.confirm("Regenerate this blueprint? This uses AI credits and replaces the current version.")) return;
-    setIsGenerating(true);
+    if (blueprint && !window.confirm("Regenerate this blueprint? This uses AI credits and saves a new version.")) return;
     try {
-      const res = await fetch("/api/ai/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "AI generation failed");
+      await generate(project.id);
       toast.success("Blueprint generated!");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "AI generation failed");
-    } finally {
-      setIsGenerating(false);
     }
   };
 

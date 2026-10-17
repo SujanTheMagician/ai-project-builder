@@ -8,11 +8,13 @@ import toast from "react-hot-toast";
 import { Sparkles, Loader2 } from "lucide-react";
 import { PROJECT_CATEGORIES, cn } from "@/lib/utils";
 import { projectInputSchema, type ProjectInput as FormData } from "@/lib/validation";
+import { useBlueprintGeneration } from "@/hooks/useBlueprintGeneration";
 
 export default function NewProjectPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const { generate } = useBlueprintGeneration();
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(projectInputSchema),
@@ -34,12 +36,7 @@ export default function NewProjectPage() {
       projectId = (await createRes.json()).project.id as string;
 
       setLoadingStep("Generating blueprint — this can take up to a minute...");
-      const genRes = await fetch("/api/ai/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId }),
-      });
-      if (!genRes.ok) throw new Error((await genRes.json().catch(() => null))?.error ?? "AI generation failed");
+      await generate(projectId);
 
       toast.success("Blueprint generated successfully!");
       router.push(`/projects/${projectId}`);

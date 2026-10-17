@@ -20,16 +20,20 @@ export const projectUpdateSchema = projectInputSchema
   .partial()
   .strict();
 
+/** History is loaded from the database, so the client only sends the new message. */
 export const chatRequestSchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string().trim().min(1).max(4000),
-      })
-    )
-    .min(1)
-    .max(50),
+  conversationId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
+  message: z.string().trim().min(1, "Message is empty").max(4000),
+});
+
+export const conversationCreateSchema = z.object({
+  projectId: z.string().min(1).nullish(),
+  title: z.string().trim().min(1).max(100).optional(),
+});
+
+export const conversationUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(100),
 });
 
 export const TAG_COLORS = ["violet", "blue", "green", "amber", "red", "pink", "cyan", "gray"] as const;
