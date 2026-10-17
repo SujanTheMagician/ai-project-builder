@@ -2,14 +2,9 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import type { ZodSchema } from "zod";
 import { getDbUser } from "@/lib/auth";
+import { ApiError } from "@/lib/errors";
 
-/** An error whose message is safe to show to the client. */
-export class ApiError extends Error {
-  constructor(public status: number, message: string, public details?: unknown) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
+export { ApiError };
 
 type Handler<C> = (req: NextRequest, ctx: C) => Promise<Response>;
 

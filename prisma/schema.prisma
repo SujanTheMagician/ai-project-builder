@@ -7,59 +7,176 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum MessageRole {
+  user
+  assistant
+}
+
+enum CreditReason {
+  signup_bonus
+  blueprint_generation
+  section_regeneration
+  refund
+  admin_adjustment
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
 model User {
-  id        String    @id @default(cuid())
-  clerkId   String    @unique
-  email     String
-  name      String?
-  imageUrl  String?
-  credits   Int       @default(500)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  projects  Project[]
+  id                 String              @id @default(cuid())
+  clerkId            String              @unique
+  email              String
+  name               String?
+  imageUrl           String?
+  /// Cached balance; credit_transactions is the source of truth (SUM(amount) = credits).
+  credits            Int                 @default(500)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  projects           Project[]
+  tags               Tag[]
+  conversations      Conversation[]
+  creditTransactions CreditTransaction[]
 
   @@map("users")
 }
 
-model Project {
-  id           String     @id @default(cuid())
-  userId       String
-  name         String
-  category     String
-  description  String
-  audience     String?
-  features     String?
-  budget       String?
-  timeline     String?
-  status       String     @default("generated")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents    Document[]
+// ─── Projects & blueprints ───────────────────────────────────────────────────
 
-  @@index([userId])
+model Project {
+  id                 String              @id @default(cuid())
+  userId             String
+  name               String
+  category           String
+  description        String
+  audience           String?
+  features           String?
+  budget             String?
+  timeline           String?
+  /// draft | generated | archived
+  status             String              @default("generated")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents          Document[]
+  tags               ProjectTag[]
+  shareLinks         ShareLink[]
+  conversations      Conversation[]
+  creditTransactions CreditTransaction[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, status])
   @@map("projects")
 }
 
+/// One row per blueprint version. The newest row (highest version) is the current blueprint.
 model Document {
-  id        String   @id @default(cuid())
-  projectId String
-  type      String
-  content   Json
-  createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  projectId     String
+  type          String
+  content       Json
+  version       Int      @default(1)
+  /// ai_generation | section_regeneration | manual_edit | restore
+  source        String   @default("ai_generation")
+  /// Human-readable change summary, e.g. "Regenerated database: use MongoDB"
+  note          String?
+  model         String?
+  promptVersion String?
+  createdAt     DateTime @default(now())
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([projectId])
+  @@index([projectId, type, version])
   @@map("documents")
 }
 
-model ChatMessage {
-  id          String   @id @default(cuid())
-  projectId   String?
-  userId      String
-  role        String
-  content     String
-  createdAt   DateTime @default(now())
+// ─── Tags (many-to-many through project_tags) ───────────────────────────────
 
-  @@map("chat_messages")
+model Tag {
+  id        String       @id @default(cuid())
+  userId    String
+  name      String
+  color     String       @default("violet")
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects  ProjectTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model ProjectTag {
+  projectId  String
+  tagId      String
+  assignedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+  @@index([tagId])
+  @@map("project_tags")
+}
+
+// ─── Sharing ─────────────────────────────────────────────────────────────────
+
+model ShareLink {
+  id        String    @id @default(cuid())
+  projectId String
+  token     String    @unique
+  views     Int       @default(0)
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("share_links")
+}
+
+// ─── Credits ledger ──────────────────────────────────────────────────────────
+
+model CreditTransaction {
+  id        String       @id @default(cuid())
+  userId    String
+  /// Negative when spent, positive when granted or refunded.
+  amount    Int
+  reason    CreditReason
+  projectId String?
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Keep the ledger row if the project is deleted.
+  project   Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("credit_transactions")
+}
+
+// ─── AI chat ─────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  /// Optional: a conversation grounded in one project's blueprint.
+  projectId String?
+  title     String    @default("New conversation")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@index([userId, updatedAt])
+  @@index([projectId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }
