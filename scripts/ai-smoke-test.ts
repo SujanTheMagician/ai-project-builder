@@ -12,7 +12,8 @@ process.env.SKIP_ENV_VALIDATION = "1";
 process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
 process.env.CLERK_SECRET_KEY ??= "sk_test_x";
 process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??= "pk_test_x";
-process.env.GEMINI_API_KEY ??= "test-key";
+// Always use a fake key: the mocked fetch below asserts it, and a real key must never be sent anywhere.
+process.env.GEMINI_API_KEY = "test-key";
 
 const sample = {
   summary: "A booking platform for small clinics.",
