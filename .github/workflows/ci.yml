@@ -30,4 +30,5 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:ai
       - run: npm run build

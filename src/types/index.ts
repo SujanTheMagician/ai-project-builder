@@ -92,3 +92,36 @@ export interface ChatMessage {
   content: string;
   createdAt?: Date;
 }
+
+export type SectionKey = "overview" | "architecture" | "database" | "api" | "roadmap" | "cost";
+
+/** Newline-delimited JSON events streamed by POST /api/ai/generate. */
+export type GenerationEvent =
+  | { type: "section"; section: SectionKey; state: "writing" | "done" }
+  | { type: "status"; message: string }
+  | { type: "done"; version: number }
+  | { type: "error"; message: string };
+
+export interface BlueprintVersionSummary {
+  id: string;
+  version: number;
+  source: "ai_generation" | "section_regeneration" | "manual_edit" | "restore";
+  note: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  createdAt: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  projectId: string | null;
+  projectName: string | null;
+  updatedAt: string;
+}
