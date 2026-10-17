@@ -53,7 +53,13 @@ export const POST = apiHandler(async (req: NextRequest) => {
     model: models.chat,
     systemInstruction: buildChatSystem(project ? { name: project.name, blueprint } : undefined),
     contents,
-    generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 4096,
+      // Gemini 2.5 "thinks" before answering, which delayed the first token by ~11s in production.
+      // Chat favours responsiveness, so disable it on Flash models (Pro models can't disable thinking).
+      ...(models.chat.includes("flash") && { thinkingConfig: { thinkingBudget: 0 } }),
+    },
     signal: req.signal,
   });
 
